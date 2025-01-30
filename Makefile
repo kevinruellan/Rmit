@@ -44,10 +44,16 @@ go_version_check:
 
 all: thor disco #@ Build the `thor` and `disco` executables
 
-clean: #@ Clean the build artifacts
+clean-bins: #@ Clean the build artifacts
 	-rm -rf \
 $(CURDIR)/bin/thor \
 $(CURDIR)/bin/disco
+
+clean: #@ Clean the build cache and remove binaries
+	@echo "cleaning build cache and binaries..."
+	@go clean -cache -modcache -i -r
+	@rm -rf $(CURDIR)/bin/*
+	@echo "done. build cache and binaries removed."
 
 test:| go_version_check #@ Run the tests
 	@go test -cover $(PACKAGES)
