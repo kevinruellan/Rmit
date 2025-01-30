@@ -23,9 +23,8 @@ import (
 	"github.com/vechain/thor/v2/tx"
 )
 
-func TestFeesCacheGreaterThanBacktraceLimit(t *testing.T) {
+func TestFees(t *testing.T) {
 	ts := initFeesServer(t, 8, 10, 10)
-	defer ts.Close()
 
 	tclient := thorclient.New(ts.URL)
 	for name, tt := range map[string]func(*testing.T, *thorclient.Client){
@@ -40,13 +39,11 @@ func TestFeesCacheGreaterThanBacktraceLimit(t *testing.T) {
 			tt(t, tclient)
 		})
 	}
-}
+	ts.Close()
 
-func TestFeesCacheLessThanBacktraceLimit(t *testing.T) {
-	ts := initFeesServer(t, 8, 6, 10)
+	ts = initFeesServer(t, 8, 6, 10)
 	defer ts.Close()
-
-	tclient := thorclient.New(ts.URL)
+	tclient = thorclient.New(ts.URL)
 	for name, tt := range map[string]func(*testing.T, *thorclient.Client){
 		"getFeeHistoryWithSummaries": getFeeHistoryWithSummaries,
 		"getFeeHistoryOnlySummaries": getFeeHistoryOnlySummaries,
