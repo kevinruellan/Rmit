@@ -222,6 +222,10 @@ func (f *Fees) Close() {
 	close(f.done)
 }
 
+func (f *Fees) CacheLen() int {
+	return f.cache.cache.Len()
+}
+
 func (f *Fees) Mount(root *mux.Router, pathPrefix string) {
 	go f.pushBestBlockToCache()
 	sub := root.PathPrefix(pathPrefix).Subrouter()
