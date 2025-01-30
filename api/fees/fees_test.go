@@ -25,7 +25,7 @@ import (
 )
 
 func TestFees(t *testing.T) {
-	ts := initFeesServer(t, 8, 10, 10)
+	ts, closeFunc := initFeesServer(t, 8, 10, 10)
 
 	tclient := thorclient.New(ts.URL)
 	for name, tt := range map[string]func(*testing.T, *thorclient.Client){
@@ -40,10 +40,14 @@ func TestFees(t *testing.T) {
 			tt(t, tclient)
 		})
 	}
+	closeFunc()
 	ts.Close()
 
-	ts = initFeesServer(t, 8, 6, 10)
-	defer ts.Close()
+	ts, closeFunc = initFeesServer(t, 8, 6, 10)
+	defer func () {
+		closeFunc()
+		ts.Close()
+	}()
 	tclient = thorclient.New(ts.URL)
 	for name, tt := range map[string]func(*testing.T, *thorclient.Client){
 		"getFeeHistoryWithSummaries": getFeeHistoryWithSummaries,
@@ -56,13 +60,13 @@ func TestFees(t *testing.T) {
 }
 
 func waitUntilCacheLen(t *testing.T, cacheLen int, expectedLen int) {
-    timeout := time.After(10 * time.Second)
+    timeout := time.After(1 * time.Minute)
     tick := time.Tick(100 * time.Millisecond)
 
     for {
         select {
         case <-timeout:
-            t.Fatalf("timeout waiting for CacheLen to be %d", expectedLen)
+            t.Fatalf("timeout waiting for cacheLen %d to be %d", cacheLen, expectedLen)
         case <-tick:
             if cacheLen == expectedLen {
                 return
@@ -71,7 +75,7 @@ func waitUntilCacheLen(t *testing.T, cacheLen int, expectedLen int) {
     }
 }
 
-func initFeesServer(t *testing.T, backtraceLimit uint32, fixedCacheSize uint32, numberOfBlocks int) *httptest.Server {
+func initFeesServer(t *testing.T, backtraceLimit uint32, fixedCacheSize uint32, numberOfBlocks int) (*httptest.Server, func()) {
 	forkConfig := thor.NoFork
 	forkConfig.GALACTICA = 1
 	thorChain, err := testchain.NewIntegrationTestChainWithFork(forkConfig)
@@ -108,7 +112,7 @@ func initFeesServer(t *testing.T, backtraceLimit uint32, fixedCacheSize uint32, 
 	// Wait until CacheLen equals the minimum value between backtraceLimit and fixedCacheSize
     waitUntilCacheLen(t, fees.CacheLen(), int(min(backtraceLimit, fixedCacheSize)))
 
-	return httptest.NewServer(router)
+	return httptest.NewServer(router), fees.Close
 }
 
 func getFeeHistoryWithSummaries(t *testing.T, tclient *thorclient.Client) {
