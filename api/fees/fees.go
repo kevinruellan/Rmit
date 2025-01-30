@@ -6,16 +6,12 @@
 package fees
 
 import (
-	"context"
 	"fmt"
 	"math/big"
 	"net/http"
-	"os"
-	"os/signal"
 	"strconv"
 	"sync"
 	"sync/atomic"
-	"syscall"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gorilla/mux"
@@ -30,6 +26,7 @@ type Fees struct {
 	repo  *chain.Repository
 	bft   bft.Committer
 	cache *FeesCache
+	done  chan struct{}
 }
 
 func New(repo *chain.Repository, bft bft.Committer, backtraceLimit uint32, fixedCacheSize uint32) *Fees {
@@ -37,6 +34,7 @@ func New(repo *chain.Repository, bft bft.Committer, backtraceLimit uint32, fixed
 		repo:  repo,
 		bft:   bft,
 		cache: NewFeesCache(repo, backtraceLimit, fixedCacheSize),
+		done:  make(chan struct{}),
 	}
 }
 
@@ -207,34 +205,25 @@ func (f *Fees) handleGetFeesHistory(w http.ResponseWriter, req *http.Request) er
 	}
 }
 
-func (f *Fees) pushBestBlockToCache(ctx context.Context) {
+func (f *Fees) pushBestBlockToCache() {
 	ticker := f.repo.NewTicker()
 	for {
 		select {
 		case <-ticker.C():
 			bestBlockSummary := f.repo.BestBlockSummary()
 			f.cache.Push(bestBlockSummary.Header)
-		case <-ctx.Done():
+		case <-f.done:
 			return
 		}
 	}
 }
 
-func onShutdown(cancel context.CancelFunc) {
-	// Handle shutdown signals
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		<-sigChan
-		cancel()
-	}()
+func (f *Fees) Close() {
+	close(f.done)
 }
 
 func (f *Fees) Mount(root *mux.Router, pathPrefix string) {
-	ctx, cancel := context.WithCancel(context.Background())
-	onShutdown(cancel)
-	go f.pushBestBlockToCache(ctx)
+	go f.pushBestBlockToCache()
 	sub := root.PathPrefix(pathPrefix).Subrouter()
 	sub.Path("/history").
 		Methods(http.MethodGet).
