@@ -208,6 +208,7 @@ func (f *Fees) pushBestBlockToCache() {
 			bestBlockSummary := f.repo.BestBlockSummary()
 			fmt.Printf("LLEGA ticker 2 %+v\n", bestBlockSummary)
 			f.cache.push(bestBlockSummary.Header)
+			fmt.Printf("LLEGA ticker 3 %+v\n", f.CachePriorities())
 		case <-f.done:
 			return
 		}
