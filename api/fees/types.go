@@ -34,9 +34,9 @@ type FeeCacheEntry struct {
 type FeesCache struct {
 	repo           *chain.Repository
 	cache          *cache.PrioCache
-	size           int
-	backtraceLimit uint32
-	fixedSize      uint32
+	size           int    // The max size of the cache when full.
+	backtraceLimit uint32 // The max number of blocks to backtrace.
+	fixedSize      uint32 // The max size of the cache (fixed in the code).
 }
 type GetFeesHistory struct {
 	OldestBlock   *uint32        `json:"oldestBlock"`
