@@ -67,6 +67,7 @@ func waitUntilCacheLen(fees *fees.Fees, expectedLen int, refill func()) {
 		select {
 		case <-timeout:
 			refill()
+			return
 		case <-tick:
 			if fees.CacheLen() == expectedLen {
 				return
@@ -90,30 +91,31 @@ func initFeesServer(t *testing.T, backtraceLimit uint32, fixedCacheSize uint32, 
 
 	var dynFeeTx *tx.Transaction
 
-	createBlocks := func() {
-		for i := 0; i < numberOfBlocks-1; i++ {
-			dynFeeTx = tx.NewTxBuilder(tx.DynamicFeeTxType).
-				ChainTag(thorChain.Repo().ChainTag()).
-				MaxFeePerGas(big.NewInt(100000)).
-				MaxPriorityFeePerGas(big.NewInt(100)).
-				Expiration(10).
-				Gas(21000).
-				Nonce(uint64(i)).
-				Clause(cla).
-				BlockRef(tx.NewBlockRef(uint32(i))).
-				MustBuild()
-			dynFeeTx = tx.MustSign(dynFeeTx, genesis.DevAccounts()[0].PrivateKey)
-			require.NoError(t, thorChain.MintTransactions(genesis.DevAccounts()[0], dynFeeTx))
-		}
+	for i := 0; i < numberOfBlocks-1; i++ {
+		dynFeeTx = tx.NewTxBuilder(tx.DynamicFeeTxType).
+			ChainTag(thorChain.Repo().ChainTag()).
+			MaxFeePerGas(big.NewInt(100000)).
+			MaxPriorityFeePerGas(big.NewInt(100)).
+			Expiration(10).
+			Gas(21000).
+			Nonce(uint64(i)).
+			Clause(cla).
+			BlockRef(tx.NewBlockRef(uint32(i))).
+			MustBuild()
+		dynFeeTx = tx.MustSign(dynFeeTx, genesis.DevAccounts()[0].PrivateKey)
+		require.NoError(t, thorChain.MintTransactions(genesis.DevAccounts()[0], dynFeeTx))
 	}
-	createBlocks()
 
 	allBlocks, err := thorChain.GetAllBlocks()
 	require.NoError(t, err)
 	require.Len(t, allBlocks, numberOfBlocks)
 
 	// Wait until CacheLen equals the minimum value between backtraceLimit and fixedCacheSize
-	waitUntilCacheLen(fees, int(min(backtraceLimit, fixedCacheSize)), createBlocks)
+	waitUntilCacheLen(fees, int(min(backtraceLimit, fixedCacheSize)), func() {
+		for _, block := range allBlocks {
+			thorChain.Repo().SetBestBlockID(block.Header().ID())
+		}
+	})
 
 	waitUntilCacheLen(fees, int(min(backtraceLimit, fixedCacheSize)), func() {
 		t.Fatalf("timeout waiting for cacheLen %d to be %d with content pepe %+v", fees.CacheLen(), int(min(backtraceLimit, fixedCacheSize)), fees.CacheContent())
