@@ -25,55 +25,54 @@ type Waiter interface {
 // It's more friendly than sync.Cond, since it's channel base. That means you can do channel selection
 // to wait for an event.
 type Signal struct {
-	l  sync.Mutex
-	ch chan TriggerInfo
+	l       sync.Mutex
+	waiters []chan TriggerInfo // Track all active waiters
 }
 
-func (s *Signal) init() {
-	if s.ch == nil {
-		s.ch = make(chan TriggerInfo, 1)
-	}
-}
+// func (s *Signal) init() {
+// 	if s.ch == nil {
+// 		s.ch = make(chan TriggerInfo, 1)
+// 	}
+// }
 
 // Signal wakes one goroutine that is waiting on s.
 func (s *Signal) Signal(source string) {
 	s.l.Lock()
+	defer s.l.Unlock()
 
-	s.init()
-	select {
-	case s.ch <- TriggerInfo{Source: source, Time: time.Now()}:
-	default:
+	if len(s.waiters) > 0 {
+		select {
+		case s.waiters[0] <- TriggerInfo{Source: source, Time: time.Now()}:
+		default:
+		}
 	}
-
-	s.l.Unlock()
 }
 
 // Broadcast wakes all goroutines that are waiting on s.
 func (s *Signal) Broadcast(source string) {
 	s.l.Lock()
+	defer s.l.Unlock()
 
-	s.init()
-	select {
-	case s.ch <- TriggerInfo{Source: source, Time: time.Now()}:
-	default:
+	triggerInfo := TriggerInfo{Source: source, Time: time.Now()}
+
+	for _, ch := range s.waiters {
+		select {
+		case ch <- triggerInfo: // Send to each waiter
+		default:
+		}
 	}
-	close(s.ch)
-	s.ch = make(chan TriggerInfo, 1)
-
-	s.l.Unlock()
 }
 
 // NewWaiter create a Waiter object for acquiring channel to wait for.
 func (s *Signal) NewWaiter() Waiter {
 	s.l.Lock()
+	defer s.l.Unlock()
 
-	s.init()
-	ref := s.ch
-
-	s.l.Unlock()
+	ch := make(chan TriggerInfo, 1) // Create a new buffered channel for each waiter
+	s.waiters = append(s.waiters, ch)
 
 	return waiterFunc(func() <-chan TriggerInfo {
-		return ref
+		return ch
 	})
 }
 
