@@ -53,6 +53,10 @@ func (s *Signal) Broadcast(source string) {
 	s.l.Lock()
 
 	s.init()
+	select {
+	case s.ch <- TriggerInfo{Source: source, Time: time.Now()}:
+	default:
+	}
 	close(s.ch)
 	s.ch = make(chan TriggerInfo, 1)
 
