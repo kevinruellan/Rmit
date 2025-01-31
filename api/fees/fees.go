@@ -23,13 +23,6 @@ import (
 	"github.com/vechain/thor/v2/thor"
 )
 
-type Fees struct {
-	repo  *chain.Repository
-	bft   bft.Committer
-	cache *FeesCache
-	done  chan struct{}
-}
-
 func New(repo *chain.Repository, bft bft.Committer, backtraceLimit uint32, fixedCacheSize uint32) *Fees {
 	return &Fees{
 		repo:  repo,

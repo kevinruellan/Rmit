@@ -8,11 +8,19 @@ package fees
 import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/vechain/thor/v2/api/utils"
+	"github.com/vechain/thor/v2/bft"
 	"github.com/vechain/thor/v2/cache"
 	"github.com/vechain/thor/v2/chain"
 )
 
 const maxBlockFetchers = 8 // Maximum number of concurrent block fetchers.
+
+type Fees struct {
+	repo  *chain.Repository
+	bft   bft.Committer
+	cache *FeesCache
+	done  chan struct{}
+}
 
 type blockData struct {
 	blockRevision *utils.Revision
