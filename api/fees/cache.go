@@ -89,7 +89,7 @@ func (fc *FeesCache) resolveRange(oldestBlockID thor.Bytes32, lastBlockNumber ui
 	}
 
 	if len(entries) > 0 {
-		// Even though  we have last blocks in the cache, we need to sort them
+		// Even though  we have the last blocks in the cache, we need to sort them
 		sort.Slice(entries, func(i, j int) bool {
 			return entries[i].Priority < entries[j].Priority
 		})
