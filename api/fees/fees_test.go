@@ -44,7 +44,7 @@ func TestFees(t *testing.T) {
 	ts.Close()
 
 	ts, closeFunc = initFeesServer(t, 8, 6, 10)
-	defer func () {
+	defer func() {
 		closeFunc()
 		ts.Close()
 	}()
@@ -59,20 +59,20 @@ func TestFees(t *testing.T) {
 	}
 }
 
-func waitUntilCacheLen(t *testing.T, cacheLen int, expectedLen int) {
-    timeout := time.After(1 * time.Minute)
-    tick := time.Tick(100 * time.Millisecond)
+func waitUntilCacheLen(fees *fees.Fees, expectedLen int, refill func()) {
+	timeout := time.After(30 * time.Second)
+	tick := time.Tick(100 * time.Millisecond)
 
-    for {
-        select {
-        case <-timeout:
-            t.Fatalf("timeout waiting for cacheLen %d to be %d", cacheLen, expectedLen)
-        case <-tick:
-            if cacheLen == expectedLen {
-                return
-            }
-        }
-    }
+	for {
+		select {
+		case <-timeout:
+			refill()
+		case <-tick:
+			if fees.CacheLen() == expectedLen {
+				return
+			}
+		}
+	}
 }
 
 func initFeesServer(t *testing.T, backtraceLimit uint32, fixedCacheSize uint32, numberOfBlocks int) (*httptest.Server, func()) {
@@ -90,27 +90,34 @@ func initFeesServer(t *testing.T, backtraceLimit uint32, fixedCacheSize uint32, 
 
 	var dynFeeTx *tx.Transaction
 
-	for i := 0; i < numberOfBlocks-1; i++ {
-		dynFeeTx = tx.NewTxBuilder(tx.DynamicFeeTxType).
-			ChainTag(thorChain.Repo().ChainTag()).
-			MaxFeePerGas(big.NewInt(100000)).
-			MaxPriorityFeePerGas(big.NewInt(100)).
-			Expiration(10).
-			Gas(21000).
-			Nonce(uint64(i)).
-			Clause(cla).
-			BlockRef(tx.NewBlockRef(uint32(i))).
-			MustBuild()
-		dynFeeTx = tx.MustSign(dynFeeTx, genesis.DevAccounts()[0].PrivateKey)
-		require.NoError(t, thorChain.MintTransactions(genesis.DevAccounts()[0], dynFeeTx))
+	createBlocks := func() {
+		for i := 0; i < numberOfBlocks-1; i++ {
+			dynFeeTx = tx.NewTxBuilder(tx.DynamicFeeTxType).
+				ChainTag(thorChain.Repo().ChainTag()).
+				MaxFeePerGas(big.NewInt(100000)).
+				MaxPriorityFeePerGas(big.NewInt(100)).
+				Expiration(10).
+				Gas(21000).
+				Nonce(uint64(i)).
+				Clause(cla).
+				BlockRef(tx.NewBlockRef(uint32(i))).
+				MustBuild()
+			dynFeeTx = tx.MustSign(dynFeeTx, genesis.DevAccounts()[0].PrivateKey)
+			require.NoError(t, thorChain.MintTransactions(genesis.DevAccounts()[0], dynFeeTx))
+		}
 	}
+	createBlocks()
 
 	allBlocks, err := thorChain.GetAllBlocks()
 	require.NoError(t, err)
 	require.Len(t, allBlocks, numberOfBlocks)
 
 	// Wait until CacheLen equals the minimum value between backtraceLimit and fixedCacheSize
-    waitUntilCacheLen(t, fees.CacheLen(), int(min(backtraceLimit, fixedCacheSize)))
+	waitUntilCacheLen(fees, int(min(backtraceLimit, fixedCacheSize)), createBlocks)
+
+	waitUntilCacheLen(fees, int(min(backtraceLimit, fixedCacheSize)), func() {
+		t.Fatalf("timeout waiting for cacheLen %d to be %d with content pepe %+v", fees.CacheLen(), int(min(backtraceLimit, fixedCacheSize)), fees.CacheContent())
+	})
 
 	return httptest.NewServer(router), fees.Close
 }
