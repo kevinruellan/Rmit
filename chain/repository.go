@@ -7,7 +7,6 @@ package chain
 
 import (
 	"encoding/binary"
-	"fmt"
 	"runtime"
 	"sync/atomic"
 
@@ -146,19 +145,17 @@ func (r *Repository) BestBlockSummary() *BlockSummary {
 
 // SetBestBlockID set the given block id as best block id.
 func (r *Repository) SetBestBlockID(id thor.Bytes32) (err error) {
+	pc, _, _, _ := runtime.Caller(1)
+	function := runtime.FuncForPC(pc)
 	defer func() {
 		if err == nil {
-			r.tick.Broadcast()
+			r.tick.Broadcast(function.Name())
 		}
 	}()
 	summary, err := r.GetBlockSummary(id)
 	if err != nil {
 		return err
 	}
-
-	pc, _, _, _ := runtime.Caller(1)
-	function := runtime.FuncForPC(pc)
-	fmt.Printf("LLEGA SetBestBlockID %s\n", function.Name())
 
 	return r.setBestBlockSummary(summary)
 }
