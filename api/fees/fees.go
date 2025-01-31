@@ -201,10 +201,12 @@ func (f *Fees) handleGetFeesHistory(w http.ResponseWriter, req *http.Request) er
 
 func (f *Fees) pushBestBlockToCache() {
 	ticker := f.repo.NewTicker()
+	fmt.Printf("LLEGA ticker 1\n")
 	for {
 		select {
 		case <-ticker.C():
 			bestBlockSummary := f.repo.BestBlockSummary()
+			fmt.Printf("LLEGA ticker 2 %+v\n", bestBlockSummary)
 			f.cache.push(bestBlockSummary.Header)
 		case <-f.done:
 			return

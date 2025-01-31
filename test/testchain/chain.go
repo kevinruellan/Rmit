@@ -8,6 +8,7 @@ package testchain
 import (
 	"errors"
 	"fmt"
+	"runtime"
 	"slices"
 	"time"
 
@@ -132,6 +133,9 @@ func (c *Chain) GenesisBlock() *block.Block {
 // MintTransactions creates a block with the provided transactions and adds it to the blockchain.
 // It wraps the transactions with receipts and passes them to MintTransactionsWithReceiptFunc.
 func (c *Chain) MintTransactions(account genesis.DevAccount, transactions ...*tx.Transaction) error {
+	pc, _, _, _ := runtime.Caller(1)
+	function := runtime.FuncForPC(pc)
+	fmt.Printf("LLEGA MintTransactions %s\n", function.Name())
 	return c.MintBlock(account, transactions...)
 }
 
