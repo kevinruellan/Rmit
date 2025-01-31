@@ -227,7 +227,7 @@ func (f *Fees) CacheLen() int {
 	return f.cache.cache.Len()
 }
 
-func (f *Fees) CacheContent() []float64 {
+func (f *Fees) CachePriorities() []float64 {
 	priorities := make([]float64, 0, f.cache.cache.Len())
 	f.cache.cache.ForEach(func(ent *cache.PrioEntry) bool {
 		priorities = append(priorities, ent.Priority)
