@@ -25,7 +25,14 @@ import (
 
 const expectedGasPriceUsedRatio = 0.0021
 
-func TestFeesBacktraceGreatherThanFixedSize(t *testing.T) {
+func TestFees(t *testing.T) {
+	t.Run("testFeesBacktraceGreaterThanFixedSize", testFeesBacktraceGreaterThanFixedSize)
+	t.Run("testFeesFixedSizeGreaterThanBacktrace", testFeesFixedSizeGreaterThanBacktrace)
+	t.Run("testFeesFixedSizeSameAsBacktrace", testFeesFixedSizeSameAsBacktrace)
+}
+
+
+func testFeesBacktraceGreaterThanFixedSize(t *testing.T) {
 	ts, closeFunc := initFeesServer(t, 8, 10, 10)
 	t.Cleanup(func() {
 		closeFunc()
@@ -47,7 +54,7 @@ func TestFeesBacktraceGreatherThanFixedSize(t *testing.T) {
 	}
 }
 
-func TestFeesFixedSizeGreatherThanBacktrace(t *testing.T) {
+func testFeesFixedSizeGreaterThanBacktrace(t *testing.T) {
 	ts, closeFunc := initFeesServer(t, 8, 6, 10)
 	defer func() {
 		closeFunc()
@@ -64,7 +71,7 @@ func TestFeesFixedSizeGreatherThanBacktrace(t *testing.T) {
 	}
 }
 
-func TestFeesFixedSizeSameAsBacktrace(t *testing.T) {
+func testFeesFixedSizeSameAsBacktrace(t *testing.T) {
 	// Less blocks than the backtrace limit
 	ts, closeFunc := initFeesServer(t, 11, 11, 10)
 	defer func() {
