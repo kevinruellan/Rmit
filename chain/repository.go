@@ -148,9 +148,6 @@ func (r *Repository) BestBlockSummary() *BlockSummary {
 func (r *Repository) SetBestBlockID(id thor.Bytes32) (err error) {
 	defer func() {
 		if err == nil {
-			pc, _, _, _ := runtime.Caller(1)
-			function := runtime.FuncForPC(pc)
-			fmt.Printf("LLEGA SetBestBlockID %s\n", function.Name())
 			r.tick.Broadcast()
 		}
 	}()
@@ -158,6 +155,11 @@ func (r *Repository) SetBestBlockID(id thor.Bytes32) (err error) {
 	if err != nil {
 		return err
 	}
+
+	pc, _, _, _ := runtime.Caller(1)
+	function := runtime.FuncForPC(pc)
+	fmt.Printf("LLEGA SetBestBlockID %s\n", function.Name())
+
 	return r.setBestBlockSummary(summary)
 }
 
