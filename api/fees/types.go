@@ -21,12 +21,6 @@ type Fees struct {
 	cache *FeesCache
 	done  chan struct{}
 }
-
-type blockData struct {
-	blockRevision *utils.Revision
-	blockSummary  *chain.BlockSummary
-	err           error
-}
 type FeeCacheEntry struct {
 	baseFee      *hexutil.Big
 	gasUsedRatio float64
@@ -42,4 +36,10 @@ type GetFeesHistory struct {
 	OldestBlock   *uint32        `json:"oldestBlock"`
 	BaseFees      []*hexutil.Big `json:"baseFees"`
 	GasUsedRatios []float64      `json:"gasUsedRatios"`
+}
+
+type blockData struct {
+	blockRevision *utils.Revision
+	blockSummary  *chain.BlockSummary
+	err           error
 }
