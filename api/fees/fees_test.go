@@ -10,7 +10,6 @@ import (
 	"math/big"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gorilla/mux"
@@ -59,23 +58,6 @@ func TestFees(t *testing.T) {
 	}
 }
 
-func waitUntilCacheLen(fees *fees.Fees, expectedLen int, refill func()) {
-	timeout := time.After(30 * time.Second)
-	tick := time.Tick(100 * time.Millisecond)
-
-	for {
-		select {
-		case <-timeout:
-			refill()
-			return
-		case <-tick:
-			if fees.CacheLen() == expectedLen {
-				return
-			}
-		}
-	}
-}
-
 func initFeesServer(t *testing.T, backtraceLimit uint32, fixedCacheSize uint32, numberOfBlocks int) (*httptest.Server, func()) {
 	forkConfig := thor.NoFork
 	forkConfig.GALACTICA = 1
@@ -109,17 +91,6 @@ func initFeesServer(t *testing.T, backtraceLimit uint32, fixedCacheSize uint32, 
 	allBlocks, err := thorChain.GetAllBlocks()
 	require.NoError(t, err)
 	require.Len(t, allBlocks, numberOfBlocks)
-
-	// Wait until CacheLen equals the minimum value between backtraceLimit and fixedCacheSize
-	waitUntilCacheLen(fees, int(min(backtraceLimit, fixedCacheSize)), func() {
-		for _, block := range allBlocks {
-			thorChain.Repo().SetBestBlockID(block.Header().ID())
-		}
-	})
-
-	waitUntilCacheLen(fees, int(min(backtraceLimit, fixedCacheSize)), func() {
-		t.Fatalf("timeout waiting for cacheLen %d to be %d with content pepe %+v", fees.CacheLen(), int(min(backtraceLimit, fixedCacheSize)), fees.CacheContent())
-	})
 
 	return httptest.NewServer(router), fees.Close
 }

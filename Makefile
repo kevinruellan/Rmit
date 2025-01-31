@@ -6,7 +6,7 @@ COPYRIGHT_YEAR = $(shell git --no-pager log -1 --format=%ad --date=format:%Y)
 THOR_VERSION = $(shell cat cmd/thor/VERSION)
 DISCO_VERSION = $(shell cat cmd/disco/VERSION)
 
-PACKAGES = `go list ./... | grep -v '/vendor/'`
+PACKAGES = $(shell go list ./... | grep -v '/vendor/' | grep -v 'github.com/vechain/thor/v2/api/fees')
 
 MAJOR = $(shell go version | cut -d' ' -f3 | cut -b 3- | cut -d. -f1)
 MINOR = $(shell go version | cut -d' ' -f3 | cut -b 3- | cut -d. -f2)
@@ -49,17 +49,27 @@ clean-bins: #@ Clean the build artifacts
 $(CURDIR)/bin/thor \
 $(CURDIR)/bin/disco
 
-clean: #@ Clean the build cache and remove binaries
+clean: #@ Clean the test and build cache and remove binaries
+	@echo "cleaning test cache..."
+	@go clean -testcache
 	@echo "cleaning build cache and binaries..."
 	@go clean -cache -modcache -i -r
 	@rm -rf $(CURDIR)/bin/*
 	@echo "done. build cache and binaries removed."
 
 test:| go_version_check #@ Run the tests
+	@echo "Running tests for github.com/vechain/thor/v2/api/fees package..."
+	@go test -cover github.com/vechain/thor/v2/api/fees
+	@echo "Running tests for all other packages..."
 	@go test -cover $(PACKAGES)
 
 test-coverage:| go_version_check #@ Run the tests with coverage
-	@go test -race -coverprofile=coverage.out -covermode=atomic $(PACKAGES)
+	@echo "Running tests with coverage for github.com/vechain/thor/v2/api/fees package..."
+	@go test -race -coverprofile=coverage_fees.out -covermode=atomic github.com/vechain/thor/v2/api/fees
+	@echo "Running tests with coverage for all other packages..."
+	@go test -race -coverprofile=coverage_all.out -covermode=atomic $(PACKAGES)
+	@echo "Combining coverage reports..."
+	@echo "mode: atomic" > coverage.out && tail -n +2 coverage_fees.out >> coverage.out && tail -n +2 coverage_all.out >> coverage.out
 	@go tool cover -html=coverage.out
 
 lint_command_check:
