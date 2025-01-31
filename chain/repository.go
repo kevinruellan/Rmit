@@ -7,6 +7,7 @@ package chain
 
 import (
 	"encoding/binary"
+	"fmt"
 	"runtime"
 	"sync/atomic"
 
@@ -147,6 +148,7 @@ func (r *Repository) BestBlockSummary() *BlockSummary {
 func (r *Repository) SetBestBlockID(id thor.Bytes32) (err error) {
 	pc, _, _, _ := runtime.Caller(1)
 	function := runtime.FuncForPC(pc)
+	fmt.Printf("LLEGA SetBestBlockID %s\n", function.Name())
 	defer func() {
 		if err == nil {
 			r.tick.Broadcast(function.Name())
