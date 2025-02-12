@@ -22,8 +22,8 @@ type Waiter interface {
 // It's more friendly than sync.Cond, since it's channel base. That means you can do channel selection
 // to wait for an event.
 type Signal struct {
-	l        sync.Mutex
-	ch       chan SignalData
+	l  sync.Mutex
+	ch chan SignalData
 }
 
 // Broadcast wakes all goroutines that are waiting on s.
