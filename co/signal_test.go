@@ -96,7 +96,7 @@ func TestIntegration(t *testing.T) {
 
 	// This is meant to get the best block signal
 	done := make(chan struct{})
-	payloads := make([]string, 0, numberOfBlocks)
+	blockNumbers := make([]uint32, 0, numberOfBlocks)
 	go func() {
 		ticker := thorChain.Repo().NewTicker()
 		for {
@@ -104,7 +104,9 @@ func TestIntegration(t *testing.T) {
 			case signalData := <-ticker.C():
 				_, ok := signalData.Data.(thor.Bytes32)
 				if ok {
-					payloads = append(payloads, signalData.Data.(thor.Bytes32).String())
+					summary, err := thorChain.Repo().GetBlockSummary(signalData.Data.(thor.Bytes32))
+					assert.NoError(t, err)
+					blockNumbers = append(blockNumbers, summary.Header.Number())
 				}
 			case <-done:
 				return
@@ -137,17 +139,9 @@ func TestIntegration(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, allBlocks, numberOfBlocks)
 	// Every block except for the genesis block
-	assert.Equal(t, numberOfBlocks-1, len(payloads))
-	expectedPayloads := []string{
-		"0x00000001d5e941d4a4576487992c2276d12dff6e30797636dedac986793bb1c8",
-		"0x00000002fc9e017e8139224f446237e7598de09c6e00bf7062dbf78217e2c5c9",
-		"0x00000003258c00ab61649bf9537c10b2ce2a8339b34b14b627e72a7d11fd7895",
-		"0x000000044e1dab4195c3986712bc8bef83d6352081f3374c8d63cc14b37ddadd",
-		"0x00000005af187489c3f98fc0e282b8c56219c01e8bfc52fd073115a25049576f",
-		"0x000000062261d57eb11eef930a5d366879881b9aa5f284cdf72bcc92708741d6",
-		"0x0000000738bf86373d7f62959a779ee83eea03c6765c1021dfb7d391fbb92b70",
-		"0x00000008525c292da882aebd89fa6912afef6523e9237d1203cb7fe2009a84b3",
-		"0x00000009cbed4e85692f9cd0373eb1f3f4e76289096806f44f347a42a36f2bb5",
+	assert.Equal(t, numberOfBlocks-1, len(blockNumbers))
+	// Might not be in order
+	for i := 1; i <= numberOfBlocks-1; i++ {
+		assert.Contains(t, blockNumbers, uint32(i))
 	}
-	assert.Equal(t, expectedPayloads, payloads)
 }
