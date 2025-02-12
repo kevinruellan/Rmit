@@ -45,13 +45,35 @@ func TestSignalBroadcastAfterWait(t *testing.T) {
 	const payload = "payload"
 	sig.Broadcast(payload)
 
+	validatePayloadForWaiters(t, numberOfWaiters, ws)
+}
+
+func TestSignalBroadcastConsecutiveValues(t *testing.T) {
+	var sig co.Signal
+
+	var ws []co.Waiter
+	const numberOfWaiters = 10
+	for i := 0; i < numberOfWaiters; i++ {
+		ws = append(ws, sig.NewWaiter())
+	}
+
+	// We now broadcast 10 consecutive values
+	// simulating block numbers
+	for i := 0; i < numberOfWaiters; i++ {
+		sig.Broadcast(i)
+
+		validatePayloadForWaiters(t, numberOfWaiters, ws)
+	}
+}
+
+func validatePayloadForWaiters(t *testing.T, numberOfWaiters int, ws []co.Waiter) {
 	var signalWaiters int
-	payloads := make([]string, 0, numberOfWaiters)
+	payloads := make([]interface{}, 0, numberOfWaiters)
 	for _, w := range ws {
 		select {
 		case signalData := <-w.C():
 			signalWaiters++
-			payloads = append(payloads, signalData.Data.(string))
+			payloads = append(payloads, signalData.Data)
 		default:
 		}
 	}
