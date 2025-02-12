@@ -26,12 +26,6 @@ type Signal struct {
 	ch       chan SignalData
 }
 
-func (s *Signal) init() {
-	if s.ch == nil {
-		s.ch = make(chan SignalData, 1)
-	}
-}
-
 // Broadcast wakes all goroutines that are waiting on s.
 func (s *Signal) Broadcast(data interface{}) {
 	s.l.Lock()
