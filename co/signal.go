@@ -22,8 +22,8 @@ type Waiter interface {
 // It's more friendly than sync.Cond, since it's channel base. That means you can do channel selection
 // to wait for an event.
 type Signal struct {
-	l  sync.Mutex
-	ch chan SignalData
+	l       sync.Mutex
+	waiters []chan SignalData // Track all active waiters
 }
 
 // Broadcast wakes all goroutines that are waiting on s.
@@ -31,11 +31,14 @@ func (s *Signal) Broadcast(data interface{}) {
 	s.l.Lock()
 	defer s.l.Unlock()
 
-	// Close and recreate the channel to ensure old waiters are cleaned up
-	if s.ch != nil {
-		close(s.ch)
+	signalData := SignalData{Data: data}
+
+	for _, ch := range s.waiters {
+		select {
+		case ch <- signalData: // Send to each waiter
+		default:
+		}
 	}
-	s.ch = make(chan SignalData, 1)
 }
 
 // NewWaiter create a Waiter object for acquiring channel to wait for.
@@ -43,13 +46,11 @@ func (s *Signal) NewWaiter() Waiter {
 	s.l.Lock()
 	defer s.l.Unlock()
 
-	if s.ch == nil {
-		s.ch = make(chan SignalData, 1)
-	}
+	ch := make(chan SignalData, 1) // Create a new buffered channel for each waiter
+	s.waiters = append(s.waiters, ch)
 
-	ref := s.ch
 	return waiterFunc(func() <-chan SignalData {
-		return ref
+		return ch
 	})
 }
 
