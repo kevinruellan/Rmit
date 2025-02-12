@@ -12,51 +12,52 @@ import (
 	"github.com/vechain/thor/v2/co"
 )
 
-func TestSignal_SignalBeforeWait(t *testing.T) {
+func TestSignalBroadcastBeforeWait(t *testing.T) {
+	const payload = "payload"
 	var sig co.Signal
-	sig.Signal()
-
-	<-sig.NewWaiter().C()
-}
-
-func TestSignal_SignalAfterWait(t *testing.T) {
-	var sig co.Signal
-	w := sig.NewWaiter()
-	sig.Signal()
-	<-w.C()
-}
-
-func TestSignal_BroadcastBefore(t *testing.T) {
-	var sig co.Signal
-	sig.Broadcast()
+	sig.Broadcast(payload)
 
 	var ws []co.Waiter
 	for i := 0; i < 10; i++ {
 		ws = append(ws, sig.NewWaiter())
 	}
 
-	var n int
+	var noWaiters int
 	for _, w := range ws {
 		select {
 		case <-w.C():
 		default:
-			n++
+			noWaiters++
 		}
 	}
-	assert.Equal(t, 10, n)
+	assert.Equal(t, 10, noWaiters)
 }
 
-func TestSignal_BroadcastAfterWait(t *testing.T) {
+func TestSignalBroadcastAfterWait(t *testing.T) {
 	var sig co.Signal
 
 	var ws []co.Waiter
-	for i := 0; i < 10; i++ {
+	const numberOfWaiters = 10
+	for i := 0; i < numberOfWaiters; i++ {
 		ws = append(ws, sig.NewWaiter())
 	}
 
-	sig.Broadcast()
+	const payload = "payload"
+	sig.Broadcast(payload)
 
+	var signalWaiters int
+	payloads := make([]string, 0, numberOfWaiters)
 	for _, w := range ws {
-		<-w.C()
+		select {
+		case signalData := <-w.C():
+			signalWaiters++
+			payloads = append(payloads, signalData.Data.(string))
+		default:
+		}
+	}
+
+	assert.Equal(t, numberOfWaiters, signalWaiters)
+	for i, payload := range payloads {
+		assert.Equal(t, payload, payloads[i])
 	}
 }

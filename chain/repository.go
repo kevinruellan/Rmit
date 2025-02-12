@@ -215,7 +215,7 @@ func (r *Repository) saveBlock(block *block.Block, receipts tx.Receipts, conflic
 	r.caches.summaries.Add(id, &summary)
 	if asBest {
 		r.bestSummary.Store(&summary)
-		r.tick.Broadcast()
+		r.tick.Broadcast(id)
 	}
 	return &summary, nil
 }
