@@ -94,6 +94,7 @@ func TestIntegration(t *testing.T) {
 	thorChain, err := testchain.NewIntegrationTestChain()
 	assert.NoError(t, err)
 
+	// This is meant to get the best block signal
 	done := make(chan struct{})
 	payloads := make([]string, 0, numberOfBlocks)
 	go func() {
@@ -111,6 +112,7 @@ func TestIntegration(t *testing.T) {
 		}
 	}()
 
+	// Build and mint transactions
 	addr := thor.BytesToAddress([]byte("to"))
 	cla := tx.NewClause(&addr).WithValue(big.NewInt(10000))
 
@@ -129,8 +131,8 @@ func TestIntegration(t *testing.T) {
 		assert.NoError(t, thorChain.MintTransactions(genesis.DevAccounts()[0], testTx))
 	}
 
+	// Validation
 	close(done)
-
 	allBlocks, err := thorChain.GetAllBlocks()
 	assert.NoError(t, err)
 	assert.Len(t, allBlocks, numberOfBlocks)
