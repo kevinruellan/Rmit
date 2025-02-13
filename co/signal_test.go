@@ -102,9 +102,9 @@ func TestIntegration(t *testing.T) {
 		for {
 			select {
 			case signalData := <-ticker.C():
-				_, ok := signalData.Data.(thor.Bytes32)
+				blockID, ok := signalData.Data.(thor.Bytes32)
 				if ok {
-					summary, err := thorChain.Repo().GetBlockSummary(signalData.Data.(thor.Bytes32))
+					summary, err := thorChain.Repo().GetBlockSummary(blockID)
 					assert.NoError(t, err)
 					blockNumbers = append(blockNumbers, summary.Header.Number())
 				}
