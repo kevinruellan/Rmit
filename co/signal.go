@@ -19,7 +19,7 @@ type Waiter interface {
 }
 
 // Signal a rendezvous point for goroutines waiting for or announcing the occurrence of an event.
-// It's more friendly than sync.Cond, since it's channel base. That means you can do channel selection
+// It's more friendly than sync.Cond, since it's channel based. That means you can do channel selection
 // to wait for an event.
 type Signal struct {
 	l       sync.Mutex
