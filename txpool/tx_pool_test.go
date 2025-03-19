@@ -28,7 +28,6 @@ import (
 	"github.com/vechain/thor/v2/thor"
 	"github.com/vechain/thor/v2/trie"
 	"github.com/vechain/thor/v2/tx"
-	Tx "github.com/vechain/thor/v2/tx"
 )
 
 const LIMIT = 10
@@ -98,7 +97,7 @@ func TestNewCloseWithServer(t *testing.T) {
 	defer pool.Close()
 
 	// Create a slice of transactions to be added to the pool.
-	txs := make(Tx.Transactions, 0, 15)
+	txs := make(tx.Transactions, 0, 15)
 	for i := range 15 {
 		tx := newTx(pool.repo.ChainTag(), nil, 21000, tx.BlockRef{}, 100, nil, tx.Features(0), devAccounts[i%len(devAccounts)])
 		txs = append(txs, tx)
@@ -112,7 +111,7 @@ func TestNewCloseWithServer(t *testing.T) {
 
 func FillPoolWithTxs(pool *TxPool, t *testing.T) {
 	// Create a slice of transactions to be added to the pool.
-	txs := make(Tx.Transactions, 0, 15)
+	txs := make(tx.Transactions, 0, 15)
 	for range 12 {
 		tx := newTx(pool.repo.ChainTag(), nil, 21000, tx.BlockRef{}, 100, nil, tx.Features(0), devAccounts[0])
 		txs = append(txs, tx)
@@ -121,7 +120,7 @@ func FillPoolWithTxs(pool *TxPool, t *testing.T) {
 	// Call the Fill method
 	pool.Fill(txs)
 
-	err := pool.Add(newTx(pool.repo.ChainTag(), nil, 21000, tx.NewBlockRef(10), 100, nil, Tx.Features(0), devAccounts[0]))
+	err := pool.Add(newTx(pool.repo.ChainTag(), nil, 21000, tx.NewBlockRef(10), 100, nil, tx.Features(0), devAccounts[0]))
 	assert.Equal(t, err.Error(), "tx rejected: pool is full")
 }
 
@@ -263,7 +262,7 @@ func TestWashTxs(t *testing.T) {
 
 	txs, _, err = pool.wash(pool.repo.BestBlockSummary())
 	assert.Nil(t, err)
-	assert.Equal(t, Tx.Transactions{tx1}, txs)
+	assert.Equal(t, tx.Transactions{tx1}, txs)
 
 	st := pool.stater.NewState(trie.Root{Hash: pool.repo.GenesisBlock().Header().StateRoot()})
 	stage, _ := st.Stage(trie.Version{Major: 1})
@@ -279,7 +278,7 @@ func TestWashTxs(t *testing.T) {
 
 	txs, _, err = pool.wash(pool.repo.BestBlockSummary())
 	assert.Nil(t, err)
-	assert.Equal(t, Tx.Transactions{tx1}, txs)
+	assert.Equal(t, tx.Transactions{tx1}, txs)
 
 	tx2 := newTx(pool.repo.ChainTag(), nil, 21000, tx.BlockRef{}, 100, nil, tx.Features(0), devAccounts[1])
 	txObj2, _ := resolveTx(tx2, false)
@@ -300,7 +299,7 @@ func TestFillPool(t *testing.T) {
 	defer pool.Close()
 
 	// Create a slice of transactions to be added to the pool.
-	txs := make(Tx.Transactions, 0, 5)
+	txs := make(tx.Transactions, 0, 5)
 	for i := range 5 {
 		tx := newTx(pool.repo.ChainTag(), nil, 21000, tx.BlockRef{}, 100, nil, tx.Features(0), devAccounts[i%len(devAccounts)])
 		txs = append(txs, tx)
@@ -367,7 +366,7 @@ func TestAdd(t *testing.T) {
 	raw, _ := hex.DecodeString(fmt.Sprintf("f8dc81%v84aabbccdd20f840df947567d83b7b8d80addcb281a71d54fc7b3364ffed82271086000000606060df947567d83b7b8d80addcb281a71d54fc7b3364ffed824e20860000006060608180830334508083bc614ec20108b88256e32450c1907f627d2c11fe5a9d0216be1712f4938b5feb04e37edef236c56266c3378acf97994beff22698b70023f486645d29cb23b479a7b044f7c6b104d2000584fcb3964446d4d832dcc849e2d76ea7e04a4ebdc3a4b61e7997e93277363d4e7fe9315e7f6dd8d9c0a8bff5879503f5c04adab8b08772499e74d34f67923501",
 		hex.EncodeToString([]byte{pool.repo.ChainTag()}),
 	))
-	var badReserved *Tx.Transaction
+	var badReserved *tx.Transaction
 	if err := rlp.DecodeBytes(raw, &badReserved); err != nil {
 		t.Error(err)
 	}
@@ -376,14 +375,14 @@ func TestAdd(t *testing.T) {
 	rand.Read(data[:])
 
 	tests = []struct {
-		tx     *Tx.Transaction
+		tx     *tx.Transaction
 		errStr string
 	}{
-		{newTx(pool.repo.ChainTag(), nil, 21000, tx.NewBlockRef(10), 100, nil, Tx.Features(0), acc), "tx rejected: tx is not executable"},
-		{newTx(pool.repo.ChainTag(), nil, 21000, tx.NewBlockRef(100), 100, nil, Tx.Features(0), acc), "tx rejected: block ref out of schedule"},
-		{newTx(pool.repo.ChainTag(), nil, 21000, tx.BlockRef{}, 100, &thor.Bytes32{1}, Tx.Features(0), acc), "tx rejected: tx is not executable"},
-		{newTx(pool.repo.ChainTag(), nil, 21000, tx.BlockRef{}, 100, &thor.Bytes32{1}, Tx.Features(2), acc), "tx rejected: unsupported features"},
-		{newTx(pool.repo.ChainTag(), []*tx.Clause{tx.NewClause(nil).WithData(data[:])}, 21000, tx.BlockRef{}, 100, &thor.Bytes32{1}, Tx.Features(0), acc), "tx rejected: size too large"},
+		{newTx(pool.repo.ChainTag(), nil, 21000, tx.NewBlockRef(10), 100, nil, tx.Features(0), acc), "tx rejected: tx is not executable"},
+		{newTx(pool.repo.ChainTag(), nil, 21000, tx.NewBlockRef(100), 100, nil, tx.Features(0), acc), "tx rejected: block ref out of schedule"},
+		{newTx(pool.repo.ChainTag(), nil, 21000, tx.BlockRef{}, 100, &thor.Bytes32{1}, tx.Features(0), acc), "tx rejected: tx is not executable"},
+		{newTx(pool.repo.ChainTag(), nil, 21000, tx.BlockRef{}, 100, &thor.Bytes32{1}, tx.Features(2), acc), "tx rejected: unsupported features"},
+		{newTx(pool.repo.ChainTag(), []*tx.Clause{tx.NewClause(nil).WithData(data[:])}, 21000, tx.BlockRef{}, 100, &thor.Bytes32{1}, tx.Features(0), acc), "tx rejected: size too large"},
 		{badReserved, "tx rejected: unsupported features"},
 	}
 
@@ -412,7 +411,7 @@ func TestBeforeVIP191Add(t *testing.T) {
 	})
 	defer pool.Close()
 
-	err := pool.StrictlyAdd(newTx(pool.repo.ChainTag(), nil, 21000, tx.NewBlockRef(200), 100, nil, Tx.Features(1), acc))
+	err := pool.StrictlyAdd(newTx(pool.repo.ChainTag(), nil, 21000, tx.NewBlockRef(200), 100, nil, tx.Features(1), acc))
 
 	assert.Equal(t, "tx rejected: unsupported features", err.Error())
 }
@@ -445,7 +444,7 @@ func TestExecutableAndNonExecutableLimits(t *testing.T) {
 	defer pool.Close()
 
 	// Create a slice of transactions to be added to the pool.
-	txs := make(Tx.Transactions, 0, 11)
+	txs := make(tx.Transactions, 0, 11)
 	for i := range 12 {
 		tx := newTx(pool.repo.ChainTag(), nil, 21000, tx.BlockRef{}, 100, nil, tx.Features(0), devAccounts[i%len(devAccounts)])
 		pool.add(tx, false, false)

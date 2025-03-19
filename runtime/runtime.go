@@ -21,7 +21,6 @@ import (
 	"github.com/vechain/thor/v2/state"
 	"github.com/vechain/thor/v2/thor"
 	"github.com/vechain/thor/v2/tx"
-	Tx "github.com/vechain/thor/v2/tx"
 	"github.com/vechain/thor/v2/vm"
 	"github.com/vechain/thor/v2/xenv"
 )
@@ -373,8 +372,8 @@ func (rt *Runtime) PrepareClause(
 
 // ExecuteTransaction executes a transaction.
 // If some clause failed, receipt.Outputs will be nil and vmOutputs may shorter than clause count.
-func (rt *Runtime) ExecuteTransaction(tx *tx.Transaction) (receipt *tx.Receipt, err error) {
-	executor, err := rt.PrepareTransaction(tx)
+func (rt *Runtime) ExecuteTransaction(trx *tx.Transaction) (receipt *tx.Receipt, err error) {
+	executor, err := rt.PrepareTransaction(trx)
 	if err != nil {
 		return nil, err
 	}
@@ -388,8 +387,8 @@ func (rt *Runtime) ExecuteTransaction(tx *tx.Transaction) (receipt *tx.Receipt, 
 }
 
 // PrepareTransaction prepare to execute tx.
-func (rt *Runtime) PrepareTransaction(tx *tx.Transaction) (*TransactionExecutor, error) {
-	resolvedTx, err := ResolveTransaction(tx)
+func (rt *Runtime) PrepareTransaction(trx *tx.Transaction) (*TransactionExecutor, error) {
+	resolvedTx, err := ResolveTransaction(trx)
 	if err != nil {
 		return nil, err
 	}
@@ -405,11 +404,11 @@ func (rt *Runtime) PrepareTransaction(tx *tx.Transaction) (*TransactionExecutor,
 	}
 
 	// ResolveTransaction has checked that tx.Gas() >= IntrinsicGas
-	leftOverGas := tx.Gas() - resolvedTx.IntrinsicGas
+	leftOverGas := trx.Gas() - resolvedTx.IntrinsicGas
 	// checkpoint to be reverted when clause failure.
 	checkpoint := rt.state.NewCheckpoint()
 
-	txOutputs := make([]*Tx.Output, 0, len(resolvedTx.Clauses))
+	txOutputs := make([]*tx.Output, 0, len(resolvedTx.Clauses))
 	reverted := false
 	finalized := false
 
@@ -452,13 +451,13 @@ func (rt *Runtime) PrepareTransaction(tx *tx.Transaction) (*TransactionExecutor,
 					txOutputs = nil
 					return
 				}
-				txOutputs = append(txOutputs, &Tx.Output{Events: output.Events, Transfers: output.Transfers})
+				txOutputs = append(txOutputs, &tx.Output{Events: output.Events, Transfers: output.Transfers})
 				return
 			}
 
 			return
 		},
-		Finalize: func() (*Tx.Receipt, error) {
+		Finalize: func() (*tx.Receipt, error) {
 			if hasNext() {
 				return nil, errors.New("not all clauses processed")
 			}
@@ -467,10 +466,10 @@ func (rt *Runtime) PrepareTransaction(tx *tx.Transaction) (*TransactionExecutor,
 			}
 			finalized = true
 
-			receipt := &Tx.Receipt{
+			receipt := &tx.Receipt{
 				Reverted: reverted,
 				Outputs:  txOutputs,
-				GasUsed:  tx.Gas() - leftOverGas,
+				GasUsed:  trx.Gas() - leftOverGas,
 				GasPayer: payer,
 			}
 
@@ -485,11 +484,11 @@ func (rt *Runtime) PrepareTransaction(tx *tx.Transaction) (*TransactionExecutor,
 			if err != nil {
 				return nil, err
 			}
-			provedWork, err := tx.ProvedWork(rt.ctx.Number-1, rt.chain.GetBlockID)
+			provedWork, err := trx.ProvedWork(rt.ctx.Number-1, rt.chain.GetBlockID)
 			if err != nil {
 				return nil, err
 			}
-			overallGasPrice := tx.OverallGasPrice(baseGasPrice, provedWork)
+			overallGasPrice := trx.OverallGasPrice(baseGasPrice, provedWork)
 
 			reward := new(big.Int).SetUint64(receipt.GasUsed)
 			reward.Mul(reward, overallGasPrice)
