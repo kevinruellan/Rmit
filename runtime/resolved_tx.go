@@ -6,6 +6,7 @@
 package runtime
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/math"
@@ -38,6 +39,7 @@ func ResolveTransaction(tx *tx.Transaction) (*ResolvedTransaction, error) {
 		return nil, err
 	}
 	if tx.Gas() < intrinsicGas {
+		fmt.Printf("LLEGA intrinsicGas %d, gas %d\n", intrinsicGas, tx.Gas())
 		return nil, errors.New("intrinsic gas exceeds provided gas")
 	}
 	delegator, err := tx.Delegator()
