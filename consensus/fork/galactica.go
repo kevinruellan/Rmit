@@ -53,6 +53,7 @@ func VerifyGalacticaHeader(config *thor.ForkConfig, parent, header *block.Header
 func CalcBaseFee(config *thor.ForkConfig, parent *block.Header) *big.Int {
 	// If the current block is the first Galactica block, return the InitialBaseFee.
 	if parent.Number()+1 == config.GALACTICA {
+		fmt.Printf("LLEGA1 parent.Number(): %v\n", parent.Number())
 		return new(big.Int).SetUint64(thor.InitialBaseFee)
 	}
 
@@ -66,6 +67,7 @@ func CalcBaseFee(config *thor.ForkConfig, parent *block.Header) *big.Int {
 
 	// If the parent gasUsed is the same as the target, the baseFee remains unchanged.
 	if parentGasUsed == parentGasTarget {
+		fmt.Printf("LLEGA2 parentBaseFee: %v\n", parentBaseFee)
 		return new(big.Int).Set(parentBaseFee)
 	}
 	if parentGasUsed > parentGasTarget {
@@ -78,9 +80,11 @@ func CalcBaseFee(config *thor.ForkConfig, parent *block.Header) *big.Int {
 			x.Div(y, baseFeeChangeDenominator),
 			common.Big1,
 		)
+		fmt.Printf("LLEGA3 parentBaseFee: %v\n", parentBaseFee)
 
 		return x.Add(parentBaseFee, baseFeeDelta)
 	} else {
+		fmt.Printf("LLEGA4 parentBaseFee: %v\n", parentBaseFee)
 		// Otherwise if the parent block used less or equal gas than its target, the baseFee should decrease.
 		// newBaseFee := max(InitialBaseFee, parentBaseFee - parentBaseFee * (parentGasTarget - parentGasUsed) / parentGasTarget / baseFeeChangeDenominator)
 		gasUsedDelta := new(big.Int).SetUint64(parentGasTarget - parentGasUsed)
