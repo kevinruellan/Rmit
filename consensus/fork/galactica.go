@@ -102,9 +102,11 @@ func GalacticaTxGasPriceAdapter(tr *tx.Transaction, gasPrice *big.Int) *galactic
 	case tx.TypeLegacy:
 		maxPriorityFee = gasPrice
 		maxFee = gasPrice
+		fmt.Printf("LLEGA legacy maxPriorityFee: %v maxFee: %v\n", maxPriorityFee, maxFee)
 	case tx.TypeDynamicFee:
 		maxPriorityFee = tr.MaxPriorityFeePerGas()
 		maxFee = tr.MaxFeePerGas()
+		fmt.Printf("LLEGA dynamic maxPriorityFee: %v maxFee: %v\n", maxPriorityFee, maxFee)
 	}
 	return &galacticaFeeMarketItems{maxFee, maxPriorityFee}
 }
