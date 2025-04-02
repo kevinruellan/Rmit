@@ -177,6 +177,8 @@ func (f *Fees) handleGetPriority(w http.ResponseWriter, _ *http.Request) error {
 		}
 	}
 
+	fmt.Printf("LLEGA priorityFee: %v\n", (*big.Int)(priorityFee))
+
 	return utils.WriteJSON(w, &FeesPriority{
 		MaxPriorityFeePerGas: priorityFee,
 	})
