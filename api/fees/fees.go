@@ -166,6 +166,8 @@ func (f *Fees) handleGetFeesHistory(w http.ResponseWriter, req *http.Request) er
 func (f *Fees) handleGetPriority(w http.ResponseWriter, _ *http.Request) error {
 	bestBlockSummary := f.data.repo.BestBlockSummary()
 
+	fmt.Printf("LLEGA bestBlockSummary: %v\n", bestBlockSummary)
+
 	priorityFee := (*hexutil.Big)(f.minPriorityFee)
 	if bestBlockSummary.Header.BaseFee() != nil {
 		forkConfig := thor.GetForkConfig(f.data.repo.NewBestChain().GenesisID())
