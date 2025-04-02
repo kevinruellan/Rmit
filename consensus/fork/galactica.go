@@ -147,6 +147,7 @@ func GalacticaPriorityPrice(tr *tx.Transaction, baseGasPrice, provedWork *big.In
 	* baseFee=900;  maxFee = 1000; maxPriorityFee = 50  -> validator gets 50
 	* baseFee=1100; maxFee = 1000; maxPriorityFee = 100 -> tx rejected, maxFee < baseFee
 	 */
+	fmt.Printf("LLEGA priorityPrice: %v maxfee: %v basefee: %v\n", feeItems.MaxPriorityFee, feeItems.MaxFee, galacticaItems.BaseFee)
 	return math.BigMin(feeItems.MaxPriorityFee, new(big.Int).Sub(feeItems.MaxFee, galacticaItems.BaseFee))
 }
 
