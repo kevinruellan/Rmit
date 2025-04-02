@@ -81,7 +81,6 @@ func CalcBaseFee(config *thor.ForkConfig, parent *block.Header) *big.Int {
 
 		return x.Add(parentBaseFee, baseFeeDelta)
 	} else {
-		fmt.Printf("LLEGA4 parentBaseFee: %v\n", parentBaseFee)
 		// Otherwise if the parent block used less or equal gas than its target, the baseFee should decrease.
 		// newBaseFee := max(InitialBaseFee, parentBaseFee - parentBaseFee * (parentGasTarget - parentGasUsed) / parentGasTarget / baseFeeChangeDenominator)
 		gasUsedDelta := new(big.Int).SetUint64(parentGasTarget - parentGasUsed)

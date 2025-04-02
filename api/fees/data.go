@@ -6,6 +6,7 @@
 package fees
 
 import (
+	"fmt"
 	"math/big"
 
 	"slices"
@@ -166,6 +167,8 @@ func (fd *FeesData) getRewardsForCache(block *block.Block) (*rewards, error) {
 			reward:  fork.GalacticaPriorityPrice(tx, baseGasPrice, provedWork, &fork.GalacticaItems{IsActive: isGalactica, BaseFee: header.BaseFee()}),
 			gasUsed: receipts[i].GasUsed,
 		}
+
+		fmt.Printf("LLEGA block: %d items[%d]: %v\n", header.Number(), i, items[i])
 	}
 
 	// Sort by reward
