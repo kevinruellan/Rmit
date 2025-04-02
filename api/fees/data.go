@@ -168,7 +168,7 @@ func (fd *FeesData) getRewardsForCache(block *block.Block) (*rewards, error) {
 			gasUsed: receipts[i].GasUsed,
 		}
 
-		fmt.Printf("LLEGA block: %d basefee: %v items[%d]: %v\n", header.Number(), header.BaseFee(), i, items[i])
+		fmt.Printf("LLEGA block: %d basefee: %v items[%d]: %+v\n", header.Number(), header.BaseFee(), i, items[i])
 	}
 
 	// Sort by reward
