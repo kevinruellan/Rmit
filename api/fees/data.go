@@ -205,8 +205,10 @@ func (fd *FeesData) calculateRewards(cachedRewards *rewards, rewardPercentiles [
 		for cumulativeGasUsed < thresholdGasUsed && currentTransactionIndex < len(cachedRewards.items)-1 {
 			currentTransactionIndex++
 			cumulativeGasUsed += cachedRewards.items[currentTransactionIndex].gasUsed
+			fmt.Printf("LLEGA cumulativeGasUsed: %d thresholdGasUsed: %d currentTransactionIndex: %d gasUsed: %d\n", cumulativeGasUsed, thresholdGasUsed, currentTransactionIndex, cachedRewards.items[currentTransactionIndex].gasUsed)
 		}
 		rewards[i] = (*hexutil.Big)(cachedRewards.items[currentTransactionIndex].reward)
+		fmt.Printf("LLEGA rewards[%d]: %v\n", i, rewards[i])
 	}
 
 	return rewards
