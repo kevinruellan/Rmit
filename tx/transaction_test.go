@@ -7,12 +7,16 @@ package tx
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"math/big"
+	"reflect"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/assert"
@@ -22,42 +26,48 @@ import (
 
 func GetMockTx(txType Type) *Transaction {
 	to, _ := thor.ParseAddress("0x7567d83b7b8d80addcb281a71d54fc7b3364ffed")
+	randTxID := thor.MustParseBytes32("0xd44cb3e0aa94b99331dc277895a004a8028c6a067deb207e18f0d7ac7cc13b30")
+	var features Features
+	features.SetDelegated(true)
+
 	return NewBuilder(txType).ChainTag(1).
 		BlockRef(BlockRef{0, 0, 0, 0, 0xaa, 0xbb, 0xcc, 0xdd}).
 		Expiration(32).
-		Clause(NewClause(&to).WithValue(big.NewInt(10000)).WithData([]byte{0, 0, 0, 0x60, 0x60, 0x60})).
-		Clause(NewClause(&to).WithValue(big.NewInt(20000)).WithData([]byte{0, 0, 0, 0x60, 0x60, 0x60})).
+		Clause(NewClause(&to).WithValue(big.NewInt(10000)).WithData([]byte{0, 0, 0, 0x61, 0x62, 0x63})).
+		Clause(NewClause(&to).WithValue(big.NewInt(20000)).WithData([]byte{0, 0, 0, 0x66, 0x65, 0x64})).
 		GasPriceCoef(128).
 		MaxFeePerGas(big.NewInt(10000000)).
 		MaxPriorityFeePerGas(big.NewInt(20000)).
 		Gas(21000).
-		DependsOn(nil).
+		DependsOn(&randTxID).
+		Features(features).
 		Nonce(12345678).Build()
 }
 
-func TestIsExpired(t *testing.T) {
-	for _, txType := range []Type{TypeLegacy, TypeDynamicFee} {
-		trx := GetMockTx(txType)
-		res := trx.IsExpired(10)
-		assert.Equal(t, res, false)
-	}
-}
+func TestTransactionFields(t *testing.T) {
+	// Define the transaction types to test
+	txTypes := []Type{TypeLegacy, TypeDynamicFee}
+	randTxID := thor.MustParseBytes32("0xd44cb3e0aa94b99331dc277895a004a8028c6a067deb207e18f0d7ac7cc13b30")
 
-func TestDependsOn(t *testing.T) {
-	for _, txType := range []Type{TypeLegacy, TypeDynamicFee} {
-		trx := GetMockTx(txType)
-		res := trx.DependsOn()
-		var expected *thor.Bytes32
-		assert.Equal(t, expected, res)
-	}
-}
+	for _, txType := range txTypes {
+		t.Run(fmt.Sprintf("txType-%v", txType), func(t *testing.T) {
+			trx := GetMockTx(txType)
 
-func TestTestFeatures(t *testing.T) {
-	for _, txType := range []Type{TypeLegacy, TypeDynamicFee} {
-		trx := GetMockTx(txType)
-		supportedFeatures := trx.Features()
-		res := trx.TestFeatures(supportedFeatures)
-		assert.Equal(t, res, nil)
+			// Check that the transaction is not expired with a threshold of 10.
+			assert.False(t, trx.IsExpired(10), "expected transaction of type %v to not be expired", txType)
+
+			// Check that the DependsOn field is nil.
+			assert.Equal(t, trx.DependsOn(), &randTxID, "expected DependsOn to be true for txType %v", txType)
+
+			// Check that testing the features against itself yields no error.
+			assert.NoError(t, trx.TestFeatures(trx.Features()), "expected TestFeatures to pass for txType %v", txType)
+
+			// Verify the ChainTag is 0x1.
+			assert.Equal(t, uint8(0x1), trx.ChainTag(), "expected ChainTag to be 0x1 for txType %v", txType)
+
+			// Verify the Nonce is as expected (0xbc614e == 12345678 in decimal).
+			assert.Equal(t, uint64(12345678), trx.Nonce(), "expected Nonce to be 12345678 for txType %v", txType)
+		})
 	}
 }
 
@@ -70,12 +80,12 @@ func TestToString(t *testing.T) {
 		{
 			name:           "Legacy transaction",
 			txType:         TypeLegacy,
-			expectedString: "\n\tTx(0x0000000000000000000000000000000000000000000000000000000000000000, 87 B)\n\tOrigin:         N/A\n\tClauses:        [\n\t\t(To:\t0x7567d83b7b8d80addcb281a71d54fc7b3364ffed\n\t\t Value:\t10000\n\t\t Data:\t0x000000606060) \n\t\t(To:\t0x7567d83b7b8d80addcb281a71d54fc7b3364ffed\n\t\t Value:\t20000\n\t\t Data:\t0x000000606060)]\n\tGas:            21000\n\tChainTag:       1\n\tBlockRef:       0-aabbccdd\n\tExpiration:     32\n\tDependsOn:      nil\n\tNonce:          12345678\n\tUnprovedWork:   0\n\tDelegator:      N/A\n\tSignature:      0x\n\n\t\tGasPriceCoef:   128\n\t\t",
+			expectedString: "\n\tTx(0x0000000000000000000000000000000000000000000000000000000000000000, 120 B)\n\tOrigin:         N/A\n\tClauses:        [\n\t\t(To:\t0x7567d83b7b8d80addcb281a71d54fc7b3364ffed\n\t\t Value:\t10000\n\t\t Data:\t0x000000616263) \n\t\t(To:\t0x7567d83b7b8d80addcb281a71d54fc7b3364ffed\n\t\t Value:\t20000\n\t\t Data:\t0x000000666564)]\n\tGas:            21000\n\tChainTag:       1\n\tBlockRef:       0-aabbccdd\n\tExpiration:     32\n\tDependsOn:      0xd44cb3e0aa94b99331dc277895a004a8028c6a067deb207e18f0d7ac7cc13b30\n\tNonce:          12345678\n\tUnprovedWork:   0\n\tDelegator:      N/A\n\tSignature:      0x\n\n\t\tGasPriceCoef:   128\n\t\t",
 		},
 		{
 			name:           "Dynamic fee transaction",
 			txType:         TypeDynamicFee,
-			expectedString: "\n\tTx(0x0000000000000000000000000000000000000000000000000000000000000000, 93 B)\n\tOrigin:         N/A\n\tClauses:        [\n\t\t(To:\t0x7567d83b7b8d80addcb281a71d54fc7b3364ffed\n\t\t Value:\t10000\n\t\t Data:\t0x000000606060) \n\t\t(To:\t0x7567d83b7b8d80addcb281a71d54fc7b3364ffed\n\t\t Value:\t20000\n\t\t Data:\t0x000000606060)]\n\tGas:            21000\n\tChainTag:       1\n\tBlockRef:       0-aabbccdd\n\tExpiration:     32\n\tDependsOn:      nil\n\tNonce:          12345678\n\tUnprovedWork:   0\n\tDelegator:      N/A\n\tSignature:      0x\n\n\t\tMaxFeePerGas:   10000000\n\t\tMaxPriorityFeePerGas: 20000\n\t\t",
+			expectedString: "\n\tTx(0x0000000000000000000000000000000000000000000000000000000000000000, 126 B)\n\tOrigin:         N/A\n\tClauses:        [\n\t\t(To:\t0x7567d83b7b8d80addcb281a71d54fc7b3364ffed\n\t\t Value:\t10000\n\t\t Data:\t0x000000616263) \n\t\t(To:\t0x7567d83b7b8d80addcb281a71d54fc7b3364ffed\n\t\t Value:\t20000\n\t\t Data:\t0x000000666564)]\n\tGas:            21000\n\tChainTag:       1\n\tBlockRef:       0-aabbccdd\n\tExpiration:     32\n\tDependsOn:      0xd44cb3e0aa94b99331dc277895a004a8028c6a067deb207e18f0d7ac7cc13b30\n\tNonce:          12345678\n\tUnprovedWork:   0\n\tDelegator:      N/A\n\tSignature:      0x\n\n\t\tMaxFeePerGas:   10000000\n\t\tMaxPriorityFeePerGas: 20000\n\t\t",
 		},
 	}
 
@@ -97,12 +107,12 @@ func TestTxSize(t *testing.T) {
 		{
 			name:         "Legacy transaction",
 			txType:       TypeLegacy,
-			expectedSize: thor.StorageSize(87),
+			expectedSize: thor.StorageSize(120),
 		},
 		{
 			name:         "Dynamic fee transaction",
 			txType:       TypeDynamicFee,
-			expectedSize: thor.StorageSize(93),
+			expectedSize: thor.StorageSize(126),
 		},
 	}
 
@@ -126,22 +136,6 @@ func TestProvedWork(t *testing.T) {
 		provedWork, err := trx.ProvedWork(headBlockNum, getBlockID)
 		assert.NoError(t, err)
 		assert.Equal(t, common.Big0, provedWork)
-	}
-}
-
-func TestChainTag(t *testing.T) {
-	for _, txType := range []Type{TypeLegacy, TypeDynamicFee} {
-		trx := GetMockTx(txType)
-		res := trx.ChainTag()
-		assert.Equal(t, res, uint8(0x1))
-	}
-}
-
-func TestNonce(t *testing.T) {
-	for _, txType := range []Type{TypeLegacy, TypeDynamicFee} {
-		trx := GetMockTx(txType)
-		res := trx.Nonce()
-		assert.Equal(t, res, uint64(0xbc614e))
 	}
 }
 
@@ -424,6 +418,33 @@ func FuzzTransactionMarshalling(f *testing.F) {
 	})
 }
 
+func TestLegacyHashWithoutNonceFieldsIntegrity(t *testing.T) {
+	mockTx := GetMockTx(TypeLegacy)
+
+	origin, _ := mockTx.Origin()
+	workHash := mockTx.body.(*legacyTransaction).hashWithoutNonce(origin)
+
+	assert.Equal(t, workHash.String(), "0x9a5494c15870eb0981a09a1c35f5f34b6fcefe3b14c793797833ac7b1fb27864")
+}
+
+func TestHashingFieldsIntegrity(t *testing.T) {
+	mockTx := GetMockTx(TypeLegacy)
+
+	fieldsHash := thor.Blake2bFn(func(w io.Writer) {
+		rlp.Encode(w, mockTx.body.(*legacyTransaction).signingFields())
+	})
+
+	assert.Equal(t, fieldsHash.String(), "0xce14ed5355e855725646507cf50579f4e3679280f6e4ac79a98bb7c69ae84a4a")
+
+	mockTx = GetMockTx(TypeDynamicFee)
+
+	fieldsHash = thor.Blake2bFn(func(w io.Writer) {
+		rlp.Encode(w, mockTx.body.(*dynamicFeeTransaction).signingFields())
+	})
+
+	assert.Equal(t, fieldsHash.String(), "0x0b196cb741cc67de0bc389b9da472ebf9b6282ad226325a19fdb8c3d8941086e")
+}
+
 func randomTx(b []byte, ui8 uint8, ui32 uint32, ui64 uint64, txType Type) *Transaction {
 	to := datagen.RandAddress()
 	var b8 [8]byte
@@ -460,4 +481,124 @@ func checkTxsEquality(expectedTx, actualTx *Transaction) error {
 		return fmt.Errorf("SigningHash: expected %v, got %v", expectedTx.SigningHash(), actualTx.SigningHash())
 	}
 	return nil
+}
+
+func TestTransactionHash(t *testing.T) {
+	for range 100 {
+		num := datagen.RandUint64()
+		var builder *Builder
+		if num%2 == 0 {
+			builder = NewBuilder(TypeLegacy)
+		} else {
+			builder = NewBuilder(TypeDynamicFee)
+		}
+
+		var (
+			ref  BlockRef
+			feat Features
+		)
+		randBytes := datagen.RandBytes(9)
+		copy(ref[:], randBytes[1:9])
+		to := datagen.RandAddress()
+
+		builder.
+			ChainTag(randBytes[0]).
+			BlockRef(ref).
+			Expiration(uint32(num)).
+			Clause(NewClause(&to).WithValue(datagen.RandBigInt()).WithData(datagen.RandBytes(32))).
+			GasPriceCoef(uint8(num)).
+			Gas(datagen.RandUint64()).
+			Nonce(num)
+
+		if num%3 == 0 {
+			feat.SetDelegated(true)
+		}
+		builder.Features(feat)
+
+		if num%5 == 0 {
+			dep := datagen.RandomHash()
+			builder.DependsOn(&dep)
+		}
+
+		trx := builder.Build()
+
+		var expected thor.Bytes32
+		if trx.Type() == TypeLegacy {
+			expected = thor.Blake2bFn(func(w io.Writer) {
+				err := rlp.Encode(w, signingFields(trx.body))
+				assert.Nil(t, err)
+			})
+
+			// test evaluate work
+			origin := thor.BytesToAddress(datagen.RandBytes(20))
+			nonce := datagen.RandUint64()
+
+			body, _ := trx.body.(*legacyTransaction)
+			expectedWork := evaluateWork(body, origin, nonce, t)
+			assert.Equal(t, expectedWork, trx.EvaluateWork(origin)(nonce))
+		} else {
+			expected = thor.Blake2bFn(func(w io.Writer) {
+				_, err := w.Write([]byte{trx.Type()})
+				assert.Nil(t, err)
+				err = rlp.Encode(w, signingFields(trx.body))
+				assert.Nil(t, err)
+			})
+		}
+		assert.Equal(t, len(trx.body.signingFields()), reflect.TypeOf(trx.body).Elem().NumField()-1, "unexpected number of signing fields")
+		assert.Equal(t, expected, trx.SigningHash())
+	}
+}
+
+// a reflect based implementation of hashWithoutNonce for cross implementation.
+func evaluateWork(body *legacyTransaction, origin thor.Address, nonce uint64, t *testing.T) *big.Int {
+	types := reflect.TypeOf(body)
+	values := reflect.ValueOf(body)
+
+	fields := make([]any, 0)
+	// hash without nonce
+	for i := range types.Elem().NumField() {
+		// skip signature and nonce field
+		if types.Elem().Field(i).Name != "Signature" && types.Elem().Field(i).Name != "Nonce" {
+			// pass reserved field as a pointer
+			if types.Elem().Field(i).Name == "Reserved" {
+				reserved := values.Elem().Field(i).Interface().(reserved)
+				fields = append(fields, &reserved)
+			} else {
+				fields = append(fields, values.Elem().Field(i).Interface())
+			}
+		}
+	}
+	fields = append(fields, origin)
+	hashWithoutNonce := thor.Blake2bFn(func(w io.Writer) {
+		err := rlp.Encode(w, fields)
+		assert.Nil(t, err)
+	})
+
+	var nonceBytes [8]byte
+	binary.BigEndian.PutUint64(nonceBytes[:], nonce)
+	hash := thor.Blake2b(hashWithoutNonce[:], nonceBytes[:])
+	r := new(big.Int).SetBytes(hash[:])
+	return r.Div(math.MaxBig256, r)
+}
+
+// signingFields returns the fields that need to be signed.
+// this is a reflect based implementation used for cross checking.
+func signingFields(body txData) []any {
+	types := reflect.TypeOf(body)
+	values := reflect.ValueOf(body)
+
+	fields := make([]any, 0)
+	for i := range types.Elem().NumField() {
+		// skip signature field
+		if types.Elem().Field(i).Name != "Signature" {
+			// pass reserved field as a pointer
+			if types.Elem().Field(i).Name == "Reserved" {
+				reserved := values.Elem().Field(i).Interface().(reserved)
+				fields = append(fields, &reserved)
+			} else {
+				fields = append(fields, values.Elem().Field(i).Interface())
+			}
+		}
+	}
+	return fields
 }
